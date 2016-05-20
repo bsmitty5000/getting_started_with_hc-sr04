@@ -1,0 +1,135 @@
+#include "init.h"
+
+void InitUART1() {
+
+    //Page 181 of dsPIC33FJ datasheet. This ties RP2 to UART1 RX
+    RPINR18bits.U1RXR = 2;
+
+    // Page 189 of dsPIC33FJ datasheet. This ties RP3 to UART1 TX
+    //Table 11-2 lists the decoded values for this register pg 167
+    RPOR1bits.RP3R = 3;
+
+    U1MODEbits.STSEL = 0; //1 stop bit
+    U1MODEbits.PDSEL = 0; //8 bit data, no parity
+    U1MODEbits.ABAUD = 0; //auto-baud disabled
+    U1MODEbits.BRGH = 0; //standard speed mode
+
+    //check ref manual uart section for calculation
+    if (BAUDRATE == 115200)
+        U1BRG = 20;
+    else if (BAUDRATE == 9600)
+        U1BRG = 256;
+    else
+        U1BRG = 0xFF;
+
+    //not using interrupts for transmit, polling instead
+    //U1STAbits.UTXISEL0 = 0;
+    //U1STAbits.UTXISEL1 = 0;
+    //IEC0bits.U1TXIE = 1;
+
+    //interrupt after one character is rcvd
+    U1STAbits.URXISEL = 0;
+    
+    //clear flag then enable interrupts
+    IFS0bits.U1RXIF = 0;
+    IEC0bits.U1RXIE = 1;
+
+    U1MODEbits.UARTEN = 1; //enable uart
+    U1STAbits.UTXEN = 1; //transmitter enabled
+
+    //IFS0bits.U1TXIF = 0;
+
+}
+
+void InitClock() {
+    /* Configure Oscillator to operate the device at 40Mhz
+       Fosc= Fin*M/(N1*N2), Fcy=Fosc/2
+       Fosc= 7.37*(43)/(2*2)=80Mhz for Fosc, Fcy = 40Mhz */
+    PLLFBD = 41; // M = 43
+    CLKDIVbits.PLLPOST = 0; // N1 = 2
+    CLKDIVbits.PLLPRE = 0; // N2 = 2
+    OSCTUN = 0;
+    RCONbits.SWDTEN = 0;
+
+    // Clock switch to incorporate PLL
+    __builtin_write_OSCCONH(0x01); // Initiate Clock Switch to
+    // FRC with PLL (NOSC=0b001)
+    __builtin_write_OSCCONL(0x01); // Start clock switching
+    while (OSCCONbits.COSC != 0b001); // Wait for Clock switch to occur
+
+    while (OSCCONbits.LOCK != 1) {
+    };
+}
+
+void InitTimer1()
+{
+	// Clear Timer value (i.e. current tiemr value) to 0
+	TMR1 = 0;
+        
+	T1CONbits.TCS = 0; //source is Fcy
+	T1CONbits.TCKPS = 2; //1:64
+        //Set PR1 to 10ms
+	PR1 = 37500;
+
+	// Clear Timer 1 interrupt flag. This allows us to detect the
+	// first interupt.
+	IFS0bits.T1IF = 0;
+
+	// Enable the interrupt for Timer 1
+	IEC0bits.T1IE = 1;
+}
+
+void InitTimer2() {
+
+    //Use internal Fcy (40 MHz)
+    T2CONbits.TCS = 0;
+
+    //1:8 prescaler
+    //5 counts for 1us
+    T2CONbits.TCKPS = 1;
+
+    //Turning it on
+    T2CONbits.TON = 1;
+}
+
+void InitHC_SR04() {
+
+    //Pin 16 (RP7) and Pin 15 (RP6) are required for this sensor
+    //because they are 5V tolerant
+
+    //Using RP7 for trigger (output)
+    TRISBbits.TRISB7 = 0;
+    //configure for open-drain to allow 5V on pin
+    ODCBbits.ODCB7 = 1;
+
+    //open drain pins are low when the output is set high
+    LATBbits.LATB7 = 0;
+
+
+
+    //Using RP6 as echo (input)
+    TRISBbits.TRISB6 = 1;
+    //Map IC1 to RP6
+    RPINR7bits.IC1R = 6;
+    //Interrupt on every 2nd event
+    //According to the sensor datasheet the echo pin will only go high
+    //after the trigger has been set. So the 2nd event should always be
+    //the falling edge
+    //IC1CONbits.ICI = 1;
+
+    //setting up timer2
+    IC1CONbits.ICTMR = 1;
+    
+    //Capture events on rising & falling edge
+    IC1CONbits.ICM = 1;
+
+    //Setup the IC1 interrupt
+    //Set priority level (need to check doc for this) This line is straight
+    //from the example in ref manual
+    IPC0bits.IC1IP = 1;
+    //Clear IF
+    IFS0bits.IC1IF = 0;
+    //Enable IC1 interrupt
+    IEC0bits.IC1IE = 1;
+
+}
