@@ -2,8 +2,13 @@
 
 void InitUART1() {
 
+    //must set to digital
+    AD1PCFGLbits.PCFG4 = 1;
+    AD1PCFGLbits.PCFG5 = 1;
+
     //Page 181 of dsPIC33FJ datasheet. This ties RP2 to UART1 RX
     RPINR18bits.U1RXR = 2;
+    TRISBbits.TRISB2 = 1;
 
     // Page 189 of dsPIC33FJ datasheet. This ties RP3 to UART1 TX
     //Table 11-2 lists the decoded values for this register pg 167
