@@ -7,7 +7,7 @@ import struct
 import signal
 import sys
         
-ser = serial.Serial(port = '/dev/ttyUSB0', 
+ser = serial.Serial(port = '/dev/ttyUSB1', 
                     baudrate = 115200,
                     bytesize = 8,
                     parity = serial.PARITY_NONE,
