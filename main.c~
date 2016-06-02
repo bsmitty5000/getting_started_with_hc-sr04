@@ -152,6 +152,6 @@ void __attribute__((__interrupt__, no_auto_psv)) _T1Interrupt(void)
 
 	// Clear Timer 1 interrupt flag to allow another Timer 1 interrupt to occur.
 	IFS0bits.T1IF = 0;
-    T1CONbits.TON = 0;
-    new_frame_start = 1;
+        T1CONbits.TON = 0;
+        new_frame_start = 1;
 }
